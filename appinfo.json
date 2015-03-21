@@ -1,0 +1,51 @@
+{
+    "appKeys": {},
+    "capabilities": [
+        ""
+    ],
+    "companyName": "legendsky@hotmail.com",
+    "longName": "\u4eca\u65e5\u7f8e\u5267 TV Series",
+    "projectType": "pebblejs",
+    "resources": {
+        "media": [
+            {
+                "file": "images/menu_icon.png",
+                "name": "IMAGE_MENU_ICON",
+                "type": "png"
+            },
+            {
+                "file": "images/logo_splash.png",
+                "name": "IMAGE_LOGO_SPLASH",
+                "type": "png"
+            },
+            {
+                "file": "images/tile_splash.png",
+                "name": "IMAGE_TILE_SPLASH",
+                "type": "png"
+            },
+            {
+                "file": "fonts/UbuntuMono-Regular.ttf",
+                "name": "MONO_FONT_14",
+                "type": "font"
+            },
+            {
+                "file": "images/icon.png",
+                "menuIcon": true,
+                "name": "IMAGES_ICON_PNG",
+                "type": "png"
+            },
+            {
+                "file": "images/logo.png",
+                "name": "IMAGES_LOGO_PNG",
+                "type": "png"
+            }
+        ]
+    },
+    "shortName": "\u4eca\u65e5\u7f8e\u5267",
+    "uuid": "68e979ce-eb6a-4c2e-a377-023bbd7a00a7",
+    "versionCode": 1,
+    "versionLabel": "1.0",
+    "watchapp": {
+        "watchface": false
+    }
+}
