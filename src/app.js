@@ -12,10 +12,12 @@ var ajax = require('ajax');
 var Ats = function() {
     this._url = 'http://resmx.com/ats/';
     this._sections = {};
-    this._yestodayExpanded = false;
+    this._sectionsForDisplay = {};
+    this._yesterdayExpanded = false;
     this._tomorrowExpanded = false;
 };
 
+// Ats Instance Methods
 Ats.prototype.load = function(callback) {
     var self = this;
     ajax({
@@ -24,7 +26,7 @@ Ats.prototype.load = function(callback) {
         },
         function(data) {
             self.parse(data);
-            callback(self.sections());
+            callback();
         },
         function(error) {
             console.log('Download failed: ' + error);
@@ -33,24 +35,26 @@ Ats.prototype.load = function(callback) {
 };
 
 Ats.prototype.parse = function(data) {
-    this._sections.today = Ats.getSection('today', data.today);
-    this._sections.yestoday = Ats.getSection('yestoday', data.yestoday);
-    this._sections.tomorrow = Ats.getSection('tomorrow', data.tomorrow);
+    this._sections.today = Ats.formatSection('today', data.today);
+    this._sections.yesterday = Ats.formatSection('yesterday', data.yesterday);
+    this._sections.tomorrow = Ats.formatSection('tomorrow', data.tomorrow);
+
+    this.updateSections();
 };
 
-Ats.prototype.sections = function() {
+Ats.prototype.updateSections = function() {
     if (!this._sections) {
         return [];
     }
 
     var sections = [];
-    if (this._yestodayExpanded) {
-        sections.push(this._sections.yestoday);
+    if (this._yesterdayExpanded) {
+        sections.push(this._sections.yesterday);
     } else {
         sections.push({
             title: "",
             items: [{
-                title: "Yestoday"
+                title: "Yesterday"
             }]
         });
     }
@@ -68,35 +72,61 @@ Ats.prototype.sections = function() {
         });
     }
 
-    return sections;
+    this._sectionsForDisplay = sections;
 }
 
-Ats.prototype.expandYestoday = function(callback) {
-    if (this._yestodayExpanded) {
+Ats.prototype.expandyesterday = function() {
+    if (this._yesterdayExpanded) {
         return;
     }
 
-    this._yestodayExpanded = true;
-    callback(this.sections());
+    this._yesterdayExpanded = true;
+    this.updateSections();
 }
 
-Ats.prototype.expandTomorrow = function(callback) {
+Ats.prototype.expandTomorrow = function() {
     if (this._tomorrowExpanded) {
         return;
     }
 
     this._tomorrowExpanded = true;
-    callback(this.sections());
+    this.updateSections();
 }
 
-Ats.getSection = function(title, rows) {
+// Ats MenuWrapper DataSource
+Ats.prototype.numberOfSections = function (menu)
+{
+    return this._sectionsForDisplay.length;
+}
+
+Ats.prototype.sectionAtIndex = function (menu, index)
+{
+    return this._sectionsForDisplay[index];
+}
+
+// Ats MenuWrapper Delegate Methods
+Ats.prototype.selectedRow = function (menu, section, row, title)
+{
+    if (title == 'Yesterday') {
+        console.log('expand yesterday');
+        this.expandyesterday();
+    } else if (title == 'Tomorrow') {
+        console.log('expand tomorrow');
+        this.expandTomorrow();
+    }
+
+    menu.reloadData();
+}
+
+// Ats Util Methods
+Ats.formatSection = function(title, rows) {
     var section = {
         title: title,
         items: []
     };
     var items = [];
     for (var idx in rows) {
-        items.push(Ats.getItem(rows[idx]));
+        items.push(Ats.formatRow(rows[idx]));
     }
 
     section.items = items;
@@ -104,14 +134,57 @@ Ats.getSection = function(title, rows) {
     return section;
 }
 
-Ats.getItem = function(row) {
+Ats.formatRow = function(row) {
     return {
         title: row.en,
         subtitle: row.cn + '' + row.ep
     };
 }
 
+// Pebble Menu Wrapper
+var MenuWrapper = function () {
+    this._menu = new UI.Menu();
+    this._sectionsCache = [];
+    
+    var self = this;
+    this._menu.on('select', function (e) {
+        self.select(e);
+    });
+}
 
+MenuWrapper.prototype.show = function () {
+    this._menu.show();
+    this.reloadData();
+}
+
+MenuWrapper.prototype.dataSource = null;
+MenuWrapper.prototype.delegate = null;
+
+MenuWrapper.prototype.reloadData = function () {
+    if (!this.dataSource) {
+        return;
+    }
+
+    var sectionsNum = this.dataSource.numberOfSections(this);
+    for (var index = 0; index < sectionsNum; index ++) {
+        var section = this.dataSource.sectionAtIndex(this, index);
+        if (this._sectionsCache[index] && this._sectionsCache[index] == section) {
+            continue;
+        }
+
+        this._menu.section(index, section);
+        this._sectionsCache[index] = section;
+    }
+}
+
+MenuWrapper.prototype.select = function(e)
+{
+    if (!this.delegate) {
+        return;
+    }
+    
+    this.delegate.selectedRow(this, e.sectionIndex, e.itemIndex, e.item.title);
+}
 
 // UI
 var splashWindow = new UI.Window({
@@ -156,29 +229,13 @@ splashWindow.add(sourceText);
 splashWindow.show();
 
 
-// Result Menu
-var resultsMenu = new UI.Menu();
-var reloadSections = function(sections) {
-    for (var i = 0; i < sections.length; i++) {
-        resultsMenu.section(i, sections[i]);
-    }
-};
-
-resultsMenu.on('select', function(e) {
-    if (e.item.title == 'Yestoday') {
-        console.log('expand yestoday');
-        ats.expandYestoday(reloadSections);
-    } else if (e.item.title == 'Tomorrow') {
-        console.log('expand tomorrow');
-        ats.expandTomorrow(reloadSections);
-    }
-});
-
-// Load
+// load
 var ats = new Ats();
-ats.load(function(sections) {
-    reloadSections(sections);
+var menu = new MenuWrapper();
+menu.dataSource = ats;
+menu.delegate = ats;
 
-    resultsMenu.show();
+ats.load(function() {
+    menu.show();
     splashWindow.hide();
 });
